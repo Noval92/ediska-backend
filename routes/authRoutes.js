@@ -1,37 +1,38 @@
 const express = require('express');
+const router = express.Router();
+const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const router = express.Router();
 
-// Register
-router.post('/register', async (req, res) => {
-  try {
-    const { nama, username, email, password } = req.body;
-    const existing = await User.findOne({ username });
-    if (existing) return res.status(400).json({ error: 'Username sudah digunakan' });
-
-    const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ nama, username, email, password: hashed });
-    await user.save();
-    res.json({ message: 'Registrasi berhasil' });
-  } catch (err) {
-    res.status(500).json({ error: 'Gagal registrasi' });
+// Konfigurasi upload foto profil
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
   }
 });
+const upload = multer({ storage: storage });
 
-// Login
-router.post('/login', async (req, res) => {
+// Update profil user
+router.post('/update', upload.single('foto'), async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
-    if (!user) return res.status(400).json({ error: 'User tidak ditemukan' });
+    const { id, username, password, nim, fakultas } = req.body;
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: 'User tidak ditemukan.' });
 
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ error: 'Password salah' });
+    if (username) user.username = username;
+    if (password) user.password = await bcrypt.hash(password, 10);
+    if (nim) user.nim = nim;
+    if (fakultas) user.fakultas = fakultas;
+    if (req.file) user.foto = req.file.path;
 
-    res.json({ message: 'Login berhasil', user: { id: user._id, nama: user.nama } });
+    await user.save();
+    res.json({ message: 'Profil diperbarui.', user });
   } catch (err) {
-    res.status(500).json({ error: 'Gagal login' });
+    console.error(err);
+    res.status(500).json({ error: 'Gagal memperbarui profil.' });
   }
 });
 
