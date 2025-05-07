@@ -15,7 +15,24 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Update profil user
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const user = await User.findOne({ username });
+    if (!user) return res.status(400).json({ error: 'Username tidak ditemukan.' });
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(400).json({ error: 'Password salah.' });
+
+    res.json({ message: 'Login berhasil.', user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Terjadi kesalahan saat login.' });
+  }
+});
+
+// POST /api/auth/update
 router.post('/update', upload.single('foto'), async (req, res) => {
   try {
     const { id, username, password, nim, fakultas } = req.body;
