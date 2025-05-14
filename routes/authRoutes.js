@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const path = require('path');
 const User = require('../models/User');
 
-// Konfigurasi upload foto profil
+// Setup multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -13,7 +14,37 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + '-' + file.originalname);
   }
 });
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
+
+// POST /api/auth/register
+router.post('/register', upload.single('foto'), async (req, res) => {
+  try {
+    const {
+      nama, username, email, password,
+      nim, nohp, domisili, semester
+    } = req.body;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = new User({
+      nama,
+      username,
+      email,
+      password: hashedPassword,
+      nim,
+      nohp,
+      domisili,
+      semester,
+      fotoUrl: req.file ? '/uploads/' + req.file.filename : undefined
+    });
+
+    await newUser.save();
+    res.status(201).json({ message: 'Registrasi berhasil', user: newUser });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Registrasi gagal' });
+  }
+});
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
@@ -43,7 +74,7 @@ router.post('/update', upload.single('foto'), async (req, res) => {
     if (password) user.password = await bcrypt.hash(password, 10);
     if (nim) user.nim = nim;
     if (fakultas) user.fakultas = fakultas;
-    if (req.file) user.foto = req.file.path;
+    if (req.file) user.fotoUrl = '/uploads/' + req.file.filename;
 
     await user.save();
     res.json({ message: 'Profil diperbarui.', user });
