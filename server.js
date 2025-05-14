@@ -6,13 +6,16 @@ dotenv.config();
 
 const studentRoutes = require('./routes/studentRoutes');
 const authRoutes = require('./routes/authRoutes');
+const semesterRoutes = require('./routes/semesterRoutes');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+
 app.use('/api/students', studentRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/semester', semesterRoutes); // ✅ route semester di sini
 
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
