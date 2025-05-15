@@ -1,52 +1,46 @@
 const express = require('express');
-const Semester = require('../models/Semester');
 const router = express.Router();
+const Semester = require('../models/Semester');
 
-// Simpan semester
-router.post('/', async (req, res) => {
-  try {
-    const { userId, semester, sks, periode } = req.body;
-
-    const exists = await Semester.findOne({ userId, semester });
-    if (exists) return res.status(400).json({ error: 'Semester sudah ada.' });
-
-    const newData = new Semester({ userId, semester, sks, periode });
-    await newData.save();
-
-    res.json({ message: 'Semester disimpan', data: newData });
-  } catch (err) {
-    res.status(500).json({ error: 'Gagal menyimpan semester' });
-  }
-});
-
-// Ambil semua semester user
+// Get all semesters for a user
 router.get('/:userId', async (req, res) => {
   try {
-    const data = await Semester.find({ userId: req.params.userId }).sort({ semester: 1 });
-    res.json(data);
+    const { userId } = req.params;
+    const semesters = await Semester.find({ userId }).sort('semester');
+    res.json(semesters);
   } catch (err) {
-    res.status(500).json({ error: 'Gagal mengambil data semester' });
+    res.status(500).json({ error: 'Gagal memuat data semester.' });
   }
 });
 
-// Edit semester
-router.put('/:id', async (req, res) => {
+// Create or update semester data
+router.post('/', async (req, res) => {
   try {
-    const { semester, sks, periode } = req.body;
-    const updated = await Semester.findByIdAndUpdate(req.params.id, { semester, sks, periode }, { new: true });
-    res.json({ message: 'Semester diperbarui', data: updated });
+    const { userId, semester, sks, tahun, parity } = req.body;
+    let record = await Semester.findOne({ userId, semester });
+    if (record) {
+      record.sks = sks;
+      record.tahun = tahun;
+      record.parity = parity;
+      await record.save();
+      return res.json({ message: 'Semester diperbarui', record });
+    }
+    record = new Semester({ userId, semester, sks, tahun, parity });
+    await record.save();
+    res.json({ message: 'Semester disimpan', record });
   } catch (err) {
-    res.status(500).json({ error: 'Gagal memperbarui semester' });
+    res.status(500).json({ error: 'Gagal menyimpan data semester.' });
   }
 });
 
-// Hapus semester
+// Delete semester record (reset)
 router.delete('/:id', async (req, res) => {
   try {
-    await Semester.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    await Semester.findByIdAndDelete(id);
     res.json({ message: 'Semester dihapus' });
   } catch (err) {
-    res.status(500).json({ error: 'Gagal menghapus semester' });
+    res.status(500).json({ error: 'Gagal menghapus data semester.' });
   }
 });
 
