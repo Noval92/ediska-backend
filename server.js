@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 dotenv.config();
+require('./models/MataKuliahSesi');
+
 
 // ===== Import semua routes =====
 const authRoutes      = require('./routes/authRoutes');
