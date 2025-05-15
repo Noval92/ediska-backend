@@ -1,4 +1,4 @@
-// backend/server.js
+// server.js
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -12,25 +12,39 @@ const matkulRoutes    = require('./routes/mataKuliahRoutes');
 
 const app = express();
 
-// ===== CORS CONFIGURATION =====
-// Ganti origin dengan domain frontend-mu jika tidak ingin wildcard
+// ===== CORS CONFIGURATION - DAPAT DIPERCAYA =====
+const allowedOrigins = [
+  'https://ediska-frontend.vercel.app',
+  'http://localhost:5500'
+];
 app.use(cors({
-  origin: ['https://ediska-frontend.vercel.app', 'http://localhost:5500'],
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization']
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile app/postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-// juga tangani preflight
+// Ini WAJIB untuk preflight CORS agar aman
 app.options('*', cors());
 
+// ===== MIDDLEWARE =====
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-// register routes
+// ===== ROUTES =====
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/semester', semesterRoutes);
 app.use('/api/matakuliah', matkulRoutes);
 
+// ===== CONNECT DB =====
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -38,5 +52,6 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✔️ Connected to MongoDB Atlas'))
 .catch(err => console.error('❌ MongoDB error:', err));
 
+// ===== SERVER =====
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () =>
