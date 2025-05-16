@@ -46,18 +46,39 @@ router.delete('/:id', async (req, res) => {
 /* ============ ENDPOINT SESI MATA KULIAH ============ */
 
 // Tambah sesi
-router.post('/sesi', upload.fields([
-  { name: 'materiFile', maxCount: 1 },
-  { name: 'lainFile', maxCount: 1 }
-]), async (req, res) => {
-  const { matkulId, pelajaran, materiJudul, lainJudul, nilai } = req.body;
-  let materiFile = '', lainFile = '';
-  if (req.files['materiFile']) materiFile = req.files['materiFile'][0].path;
-  if (req.files['lainFile']) lainFile = req.files['lainFile'][0].path;
+router.post('/sesi', upload.any(), async (req, res) => {
+  const {
+    matkulId,
+    pelajaran,
+    ringkasan,
+    nilai,
+    pdfJudul = [],
+    videoJudul = [],
+    videoLink = []
+  } = req.body;
+
+  const pdfFiles = [];
+  const pdfJudulArr = Array.isArray(pdfJudul) ? pdfJudul : [pdfJudul];
+  const videoJudulArr = Array.isArray(videoJudul) ? videoJudul : [videoJudul];
+  const videoLinkArr = Array.isArray(videoLink) ? videoLink : [videoLink];
+
+  // kumpulkan semua PDF dari req.files
+  const pdfFileList = req.files.filter(f => f.fieldname === 'pdfFile[]');
+  for (let i = 0; i < pdfFileList.length; i++) {
+    pdfFiles.push(pdfFileList[i].path);
+  }
 
   const sesi = await MataKuliahSesi.create({
-    matkulId, pelajaran, materiFile, materiJudul, lainFile, lainJudul, nilai
+    matkulId,
+    pelajaran,
+    ringkasan,
+    nilai,
+    pdf: pdfFiles,
+    pdfJudul: pdfJudulArr,
+    videoLink: videoLinkArr,
+    videoJudul: videoJudulArr
   });
+
   res.json(sesi);
 });
 
