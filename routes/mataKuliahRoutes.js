@@ -45,7 +45,7 @@ router.delete('/:id', async (req, res) => {
 
 /* ============ ENDPOINT SESI MATA KULIAH ============ */
 
-// Tambah sesi (dengan upload)
+// Tambah sesi
 router.post('/sesi', upload.fields([
   { name: 'materiFile', maxCount: 1 },
   { name: 'lainFile', maxCount: 1 }
@@ -61,13 +61,13 @@ router.post('/sesi', upload.fields([
   res.json(sesi);
 });
 
-// Get semua sesi per matkul
+// Ambil semua sesi dari satu matkul
 router.get('/:matkulId/sesi', async (req, res) => {
   const list = await MataKuliahSesi.find({ matkulId: req.params.matkulId });
   res.json(list);
 });
 
-// Get satu sesi (untuk edit)
+// Ambil sesi berdasarkan ID
 router.get('/sesi/:id', async (req, res) => {
   const sesi = await MataKuliahSesi.findById(req.params.id);
   if (!sesi) return res.status(404).send('Sesi tidak ditemukan');
@@ -96,6 +96,16 @@ router.put('/sesi/:id', upload.fields([
 
   await sesi.save();
   res.send('Sesi berhasil diperbarui');
+});
+
+// Hapus sesi berdasarkan ID
+router.delete('/sesi/:id', async (req, res) => {
+  try {
+    await MataKuliahSesi.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Sesi berhasil dihapus.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Gagal menghapus sesi.' });
+  }
 });
 
 module.exports = router;
