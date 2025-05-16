@@ -16,13 +16,19 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// POST /api/auth/register
+// ===================== REGISTER =====================
 router.post('/register', upload.single('foto'), async (req, res) => {
   try {
     const {
       nama, username, email, password,
       nim, nohp, domisili, semester
     } = req.body;
+
+    // Cek username sudah ada
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username sudah terdaftar.' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -39,31 +45,48 @@ router.post('/register', upload.single('foto'), async (req, res) => {
     });
 
     await newUser.save();
-    res.status(201).json({ message: 'Registrasi berhasil', user: newUser });
+
+    // Jangan kirim password ke FE!
+    const { password: _, ...userData } = newUser.toObject();
+
+    res.status(201).json({ message: 'Registrasi berhasil', user: userData });
   } catch (err) {
-    console.error(err);
+    console.error("REGISTER ERROR:", err);
     res.status(500).json({ error: 'Registrasi gagal' });
   }
 });
 
-// POST /api/auth/login
+// ===================== LOGIN =====================
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
+  console.log('LOGIN ATTEMPT:', username, password); // log request masuk
   try {
     const user = await User.findOne({ username });
-    if (!user) return res.status(400).json({ error: 'Username tidak ditemukan.' });
+    console.log('DB USER:', user); // log hasil find user
+
+    if (!user) {
+      console.log("User tidak ditemukan:", username);
+      return res.status(400).json({ error: 'Username tidak ditemukan.' });
+    }
 
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(400).json({ error: 'Password salah.' });
+    console.log('PASSWORD VALID:', valid);
 
-    res.json({ message: 'Login berhasil.', user });
+    if (!valid) {
+      return res.status(400).json({ error: 'Password salah.' });
+    }
+
+    // Jangan kirim password ke FE!
+    const { password: _, ...userData } = user.toObject();
+
+    res.json({ message: 'Login berhasil.', user: userData });
   } catch (err) {
-    console.error(err);
+    console.error('LOGIN ERROR:', err);
     res.status(500).json({ error: 'Terjadi kesalahan saat login.' });
   }
 });
 
-// POST /api/auth/update
+// ===================== UPDATE PROFILE =====================
 router.post('/update', upload.single('foto'), async (req, res) => {
   try {
     const { id, username, password, nim, fakultas } = req.body;
@@ -77,9 +100,10 @@ router.post('/update', upload.single('foto'), async (req, res) => {
     if (req.file) user.fotoUrl = '/uploads/' + req.file.filename;
 
     await user.save();
-    res.json({ message: 'Profil diperbarui.', user });
+    const { password: _, ...userData } = user.toObject();
+    res.json({ message: 'Profil diperbarui.', user: userData });
   } catch (err) {
-    console.error(err);
+    console.error('UPDATE ERROR:', err);
     res.status(500).json({ error: 'Gagal memperbarui profil.' });
   }
 });

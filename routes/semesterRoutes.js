@@ -1,46 +1,49 @@
 const express = require('express');
 const router = express.Router();
 const Semester = require('../models/Semester');
+const MataKuliah = require('../models/MataKuliah');
 
-// Get all semesters for a user
+// Get semua semester milik user
 router.get('/:userId', async (req, res) => {
   try {
-    const { userId } = req.params;
-    const semesters = await Semester.find({ userId }).sort('semester');
+    const semesters = await Semester.find({ userId: req.params.userId });
     res.json(semesters);
   } catch (err) {
-    res.status(500).json({ error: 'Gagal memuat data semester.' });
+    res.status(500).json({ error: 'Gagal mengambil data semester.' });
   }
 });
 
-// Create or update semester data
+// Tambah/Update semester
 router.post('/', async (req, res) => {
+  const { userId, semester, sks, tahun, parity } = req.body;
   try {
-    const { userId, semester, sks, tahun, parity } = req.body;
-    let record = await Semester.findOne({ userId, semester });
-    if (record) {
-      record.sks = sks;
-      record.tahun = tahun;
-      record.parity = parity;
-      await record.save();
-      return res.json({ message: 'Semester diperbarui', record });
+    let sem = await Semester.findOne({ userId, semester });
+    if (sem) {
+      sem.sks = sks;
+      sem.tahun = tahun;
+      sem.parity = parity;
+      await sem.save();
+    } else {
+      sem = await Semester.create({ userId, semester, sks, tahun, parity });
     }
-    record = new Semester({ userId, semester, sks, tahun, parity });
-    await record.save();
-    res.json({ message: 'Semester disimpan', record });
+    res.json(sem);
   } catch (err) {
     res.status(500).json({ error: 'Gagal menyimpan data semester.' });
   }
 });
 
-// Delete semester record (reset)
+// Hapus semester + semua matkul semester tsb
 router.delete('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    await Semester.findByIdAndDelete(id);
-    res.json({ message: 'Semester dihapus' });
+    const semester = await Semester.findById(req.params.id);
+    if (!semester) return res.status(404).json({ error: 'Semester tidak ditemukan' });
+
+    await semester.deleteOne();
+    await MataKuliah.deleteMany({ userId: semester.userId, semester: semester.semester });
+
+    res.json({ message: 'Semester dan semua matkul semester ini dihapus.' });
   } catch (err) {
-    res.status(500).json({ error: 'Gagal menghapus data semester.' });
+    res.status(500).json({ error: 'Gagal menghapus semester.' });
   }
 });
 
