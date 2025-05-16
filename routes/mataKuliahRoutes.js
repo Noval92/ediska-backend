@@ -1,26 +1,28 @@
-// routes/mataKuliahRoutes.js
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const MataKuliah = require('../models/MataKuliah');
 const MataKuliahSesi = require('../models/MataKuliahSesi');
 
-// SETUP UPLOAD FOLDER
+// === SETUP UPLOAD FILE ===
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    const uploadPath = 'uploads/';
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g,'_'));
+    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'));
   }
 });
 const upload = multer({ storage: storage });
 
-// --------- ENDPOINT API -----------
+/* ============ ENDPOINT MATA KULIAH ============ */
 
-// List mata kuliah per user dan semester
+// List mata kuliah per user & semester
 router.get('/', async (req, res) => {
   const { userId, semester } = req.query;
   const mk = await MataKuliah.find({ userId, semester });
@@ -34,16 +36,16 @@ router.post('/', async (req, res) => {
   res.json(mk);
 });
 
-// Hapus mata kuliah
+// Hapus mata kuliah + hapus semua sesi-nya
 router.delete('/:id', async (req, res) => {
   await MataKuliah.findByIdAndDelete(req.params.id);
   await MataKuliahSesi.deleteMany({ matkulId: req.params.id });
   res.sendStatus(200);
 });
 
-// --- Sesi (endpoint baru) ---
+/* ============ ENDPOINT SESI MATA KULIAH ============ */
 
-// Simpan sesi (with upload file)
+// Tambah sesi (dengan upload)
 router.post('/sesi', upload.fields([
   { name: 'materiFile', maxCount: 1 },
   { name: 'lainFile', maxCount: 1 }
@@ -52,6 +54,7 @@ router.post('/sesi', upload.fields([
   let materiFile = '', lainFile = '';
   if (req.files['materiFile']) materiFile = req.files['materiFile'][0].path;
   if (req.files['lainFile']) lainFile = req.files['lainFile'][0].path;
+
   const sesi = await MataKuliahSesi.create({
     matkulId, pelajaran, materiFile, materiJudul, lainFile, lainJudul, nilai
   });
@@ -62,6 +65,37 @@ router.post('/sesi', upload.fields([
 router.get('/:matkulId/sesi', async (req, res) => {
   const list = await MataKuliahSesi.find({ matkulId: req.params.matkulId });
   res.json(list);
+});
+
+// Get satu sesi (untuk edit)
+router.get('/sesi/:id', async (req, res) => {
+  const sesi = await MataKuliahSesi.findById(req.params.id);
+  if (!sesi) return res.status(404).send('Sesi tidak ditemukan');
+  res.json(sesi);
+});
+
+// Update sesi
+router.put('/sesi/:id', upload.fields([
+  { name: 'materiFile', maxCount: 1 },
+  { name: 'lainFile', maxCount: 1 }
+]), async (req, res) => {
+  const sesi = await MataKuliahSesi.findById(req.params.id);
+  if (!sesi) return res.status(404).send('Sesi tidak ditemukan');
+
+  sesi.pelajaran = req.body.pelajaran;
+  sesi.materiJudul = req.body.materiJudul;
+  sesi.lainJudul = req.body.lainJudul;
+  sesi.nilai = req.body.nilai;
+
+  if (req.files['materiFile']) {
+    sesi.materiFile = req.files['materiFile'][0].path;
+  }
+  if (req.files['lainFile']) {
+    sesi.lainFile = req.files['lainFile'][0].path;
+  }
+
+  await sesi.save();
+  res.send('Sesi berhasil diperbarui');
 });
 
 module.exports = router;
