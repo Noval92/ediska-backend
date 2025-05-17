@@ -4,6 +4,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 dotenv.config();
 require('./models/MataKuliahSesi');
+const User = require('./models/User'); // ⬅️ Tambahkan ini
 
 
 // ===== Import semua routes =====
