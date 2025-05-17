@@ -1,26 +1,54 @@
 const express = require('express');
+const router = express.Router();
 const multer = require('multer');
 const Student = require('../models/Student');
 
-const router = express.Router();
-
+// Setup penyimpanan Multer untuk foto profil
 const storage = multer.diskStorage({
-  destination: './uploads/',
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}_${file.originalname}`);
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // folder penyimpanan file
   },
+  filename: function (req, file, cb) {
+    const ext = file.originalname.split('.').pop();
+    cb(null, 'foto-' + Date.now() + '.' + ext);
+  }
 });
-const upload = multer({ storage });
 
-router.post('/', upload.single('dokumen'), async (req, res) => {
+const upload = multer({ storage: storage });
+
+// ===========================
+// ENDPOINT UPDATE PROFIL + FOTO
+// ===========================
+
+/**
+ * @route   PUT /api/students/:id
+ * @desc    Update profil mahasiswa (termasuk foto profil)
+ * @access  Auth (optional)
+ */
+router.put('/:id', upload.single('foto'), async (req, res) => {
   try {
-    const { nim, nama, semester } = req.body;
-    const dokumenPath = req.file.path;
-    const student = new Student({ nim, nama, semester, dokumenPath });
-    await student.save();
-    res.json({ message: 'Data berhasil disimpan!' });
+    // Data yang boleh diupdate
+    const { nama, nim, semester, email, domisili } = req.body;
+    const updateData = {};
+
+    if (nama) updateData.nama = nama;
+    if (nim) updateData.nim = nim;
+    if (semester) updateData.semester = semester;
+    if (email) updateData.email = email;
+    if (domisili) updateData.domisili = domisili;
+    if (req.file) updateData.foto = req.file.path; // Foto baru
+
+    // Proses update
+    const student = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true });
+
+    if (!student) return res.status(404).json({ error: 'Mahasiswa tidak ditemukan.' });
+
+    res.json({
+      message: 'Profil berhasil diupdate!',
+      student
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Gagal menyimpan data.' });
+    res.status(500).json({ error: 'Gagal update profil.' });
   }
 });
 
