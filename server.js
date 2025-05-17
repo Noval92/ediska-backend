@@ -27,6 +27,7 @@ app.options('*', cors());
 
 // ===== MIDDLEWARE =====
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // ✅ fixing
 app.use('/uploads', express.static('uploads'));
 
 // ===== REGISTER ROUTES =====

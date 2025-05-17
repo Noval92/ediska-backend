@@ -46,7 +46,12 @@ router.delete('/:id', async (req, res) => {
 /* ============ ENDPOINT SESI MATA KULIAH ============ */
 
 // Tambah sesi
-router.post('/sesi', upload.any(), async (req, res) => {
+router.post('/sesi', upload.fields([
+  { name: 'pdfFile[]', maxCount: 10 },
+  { name: 'pdfJudul[]' },
+  { name: 'videoJudul[]' },
+  { name: 'videoLink[]' }
+]), async (req, res) => {
   const {
     matkulId,
     pelajaran,
@@ -62,8 +67,7 @@ router.post('/sesi', upload.any(), async (req, res) => {
   const videoJudulArr = Array.isArray(videoJudul) ? videoJudul : [videoJudul];
   const videoLinkArr = Array.isArray(videoLink) ? videoLink : [videoLink];
 
-  // kumpulkan semua PDF dari req.files
-  const pdfFileList = req.files.filter(f => f.fieldname === 'pdfFile[]');
+  const pdfFileList = req.files['pdfFile[]'] || [];
   for (let i = 0; i < pdfFileList.length; i++) {
     pdfFiles.push(pdfFileList[i].path);
   }
