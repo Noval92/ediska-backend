@@ -1,54 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const Student = require('../models/Student');
+const Student = require('../models/Student'); // Sesuaikan path model
 
-// Setup penyimpanan Multer untuk foto profil
+// Multer setup for upload
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // folder penyimpanan file
-  },
-  filename: function (req, file, cb) {
-    const ext = file.originalname.split('.').pop();
-    cb(null, 'foto-' + Date.now() + '.' + ext);
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, 'foto-' + Date.now() + '.' + file.originalname.split('.').pop())
+});
+const upload = multer({ storage });
+
+// GET student by id
+router.get('/:id', async (req, res) => {
+  try {
+    const data = await Student.findById(req.params.id).lean();
+    if (!data) return res.status(404).json({ error: 'Mahasiswa tidak ditemukan' });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-const upload = multer({ storage: storage });
-
-// ===========================
-// ENDPOINT UPDATE PROFIL + FOTO
-// ===========================
-
-/**
- * @route   PUT /api/students/:id
- * @desc    Update profil mahasiswa (termasuk foto profil)
- * @access  Auth (optional)
- */
+// PUT update student
 router.put('/:id', upload.single('foto'), async (req, res) => {
   try {
-    // Data yang boleh diupdate
-    const { nama, nim, semester, email, domisili } = req.body;
-    const updateData = {};
+    const updateData = { ...req.body };
+    if (req.file) updateData.foto = req.file.path;
+    // Pastikan email tidak bisa diubah!
+    delete updateData.email;
 
-    if (nama) updateData.nama = nama;
-    if (nim) updateData.nim = nim;
-    if (semester) updateData.semester = semester;
-    if (email) updateData.email = email;
-    if (domisili) updateData.domisili = domisili;
-    if (req.file) updateData.foto = req.file.path; // Foto baru
-
-    // Proses update
-    const student = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true });
-
-    if (!student) return res.status(404).json({ error: 'Mahasiswa tidak ditemukan.' });
-
-    res.json({
-      message: 'Profil berhasil diupdate!',
-      student
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Gagal update profil.' });
+    const updated = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Mahasiswa tidak ditemukan' });
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
