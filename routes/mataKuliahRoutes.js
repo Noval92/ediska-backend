@@ -101,23 +101,24 @@ router.get('/sesi/:id', async (req, res) => {
 
 // Update sesi
 router.put('/sesi/:id', upload.fields([
-  { name: 'materiFile', maxCount: 1 },
-  { name: 'lainFile', maxCount: 1 }
+  { name: 'pdfFile[]', maxCount: 10 }
 ]), async (req, res) => {
   const sesi = await MataKuliahSesi.findById(req.params.id);
   if (!sesi) return res.status(404).send('Sesi tidak ditemukan');
 
   sesi.pelajaran = req.body.pelajaran;
-  sesi.materiJudul = req.body.materiJudul;
-  sesi.lainJudul = req.body.lainJudul;
+  sesi.ringkasan = req.body.ringkasan;
   sesi.nilai = req.body.nilai;
 
-  if (req.files['materiFile']) {
-    sesi.materiFile = req.files['materiFile'][0].path;
-  }
-  if (req.files['lainFile']) {
-    sesi.lainFile = req.files['lainFile'][0].path;
-  }
+  const pdfJudul = Array.isArray(req.body.pdfJudul) ? req.body.pdfJudul : [req.body.pdfJudul].filter(Boolean);
+  const videoJudul = Array.isArray(req.body.videoJudul) ? req.body.videoJudul : [req.body.videoJudul].filter(Boolean);
+  const videoLink = Array.isArray(req.body.videoLink) ? req.body.videoLink : [req.body.videoLink].filter(Boolean);
+  const pdfFiles = (req.files['pdfFile[]'] || []).map(f => f.path);
+
+  sesi.pdfJudul = pdfJudul;
+  sesi.pdf = pdfFiles.length > 0 ? pdfFiles : sesi.pdf; // kalau ada yang baru diupload
+  sesi.videoJudul = videoJudul;
+  sesi.videoLink = videoLink;
 
   await sesi.save();
   res.send('Sesi berhasil diperbarui');
