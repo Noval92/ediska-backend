@@ -25,7 +25,10 @@ const upload = multer({ storage: storage });
 // List mata kuliah per user & semester
 router.get('/', async (req, res) => {
   const { userId, semester } = req.query;
-  const mk = await MataKuliah.find({ userId, semester });
+  const filter = {};
+  if (userId) filter.userId = userId;
+  if (semester) filter.semester = semester;
+  const mk = await MataKuliah.find(filter);
   res.json(mk);
 });
 
@@ -88,6 +91,8 @@ router.post('/sesi', upload.fields([
 
 // Ambil semua sesi dari satu matkul
 router.get('/:matkulId/sesi', async (req, res) => {
+  // Pastikan bukan /sesi/:id
+  if (req.params.matkulId === 'sesi') return res.status(400).json({ message: 'Invalid request' });
   const list = await MataKuliahSesi.find({ matkulId: req.params.matkulId });
   res.json(list);
 });
@@ -131,6 +136,20 @@ router.delete('/sesi/:id', async (req, res) => {
     res.json({ message: 'Sesi berhasil dihapus.' });
   } catch (err) {
     res.status(500).json({ error: 'Gagal menghapus sesi.' });
+  }
+});
+
+/* ============ ENDPOINT DETAIL MATA KULIAH BY ID ============ */
+// !!! PALING BAWAH !!!
+router.get('/:id', async (req, res) => {
+  // Agar tidak bentrok dengan /:matkulId/sesi atau /sesi/:id
+  if (req.params.id === 'sesi') return res.status(400).json({ message: 'Invalid request' });
+  try {
+    const mk = await MataKuliah.findById(req.params.id);
+    if (!mk) return res.status(404).json({ message: 'Mata Kuliah tidak ditemukan' });
+    res.json(mk);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
