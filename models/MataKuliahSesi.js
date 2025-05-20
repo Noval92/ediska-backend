@@ -1,4 +1,3 @@
-// models/MataKuliahSesi.js
 const mongoose = require('mongoose');
 
 const sesiSchema = new mongoose.Schema({
@@ -6,13 +5,12 @@ const sesiSchema = new mongoose.Schema({
 
   pelajaran: { type: String, required: true },
   ringkasan: { type: String, default: '' },
+  ringkasanOCR: { type: String, default: '' }, // Tambahkan field ini
 
-  pdf: [{ type: String }],            // path PDF file
+  pdf: [{ type: String }],
   pdfJudul: [{ type: String }],
-
   videoLink: [{ type: String }],
   videoJudul: [{ type: String }],
-
   nilai: { type: Number, default: null }
 }, { timestamps: true });
 
