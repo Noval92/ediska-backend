@@ -75,16 +75,17 @@ router.post('/sesi', upload.fields([
     pdfFiles.push(pdfFileList[i].path);
   }
 
-  const sesi = await MataKuliahSesi.create({
-    matkulId,
-    pelajaran,
-    ringkasan,
-    nilai,
-    pdf: pdfFiles,
-    pdfJudul: pdfJudulArr,
-    videoLink: videoLinkArr,
-    videoJudul: videoJudulArr
-  });
+const sesi = await MataKuliahSesi.create({
+  matkulId,
+  pelajaran,
+  ringkasan,
+  ringkasanOCR: req.body.ringkasanOCR, // <--- Tambah ini!
+  nilai,
+  pdf: pdfFiles,
+  pdfJudul: pdfJudulArr,
+  videoLink: videoLinkArr,
+  videoJudul: videoJudulArr
+});
 
   res.json(sesi);
 });
