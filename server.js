@@ -36,6 +36,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/semester', semesterRoutes);
 app.use('/api/matakuliah', matkulRoutes);
+const userRoutes = require('./routes/userRoutes');
+app.use('/api/users', userRoutes);
+
 
 // ===== CONNECT TO MONGODB ATLAS =====
 mongoose.connect(process.env.MONGO_URI, {
