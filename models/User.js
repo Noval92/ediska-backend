@@ -27,7 +27,11 @@ const userSchema = new mongoose.Schema({
   },
   foto: {
     type: String
-  }
+  },
+  // TAMBAHKAN INI:
+  nohp: { type: String, default: '' },
+  domisili: { type: String, default: '' },
+  semester: { type: String, default: '' }, // atau Number, bebas
 });
 
 module.exports = mongoose.model('User', userSchema);
