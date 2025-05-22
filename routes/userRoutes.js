@@ -32,10 +32,15 @@ router.get('/:id', async (req, res) => {
 // UPDATE user by id (profil + foto)
 router.put('/:id', upload.single('foto'), async (req, res) => {
   try {
-    let update = req.body;
-    if (req.file) {
-      update.foto = req.file.path;
-    }
+    let update = {
+      nama: req.body.nama,
+      nim: req.body.nim,
+      fakultas: req.body.fakultas,
+      nohp: req.body.nohp,           // tambah
+      domisili: req.body.domisili,   // tambah
+      semester: req.body.semester,   // tambah
+    };
+    if (req.file) update.foto = req.file.path;
     const user = await User.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' });
     res.json(user);
@@ -43,5 +48,4 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     res.status(500).json({ error: 'Server error', detail: err.message });
   }
 });
-
 module.exports = router;
