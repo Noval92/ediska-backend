@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
+
 // ==== Pakai Cloudinary ==== //
-const { storage } = require('../cloudinary'); // Pastikan path benar!
+const { storage, cloudinary } = require('../cloudinary'); // Tambahkan cloudinary
 const multer = require('multer');
-const upload = multer({ storage: storage }); // SEKARANG storage cloudinary!
+const upload = multer({ storage: storage });
 
 const MataKuliah = require('../models/MataKuliah');
 const MataKuliahSesi = require('../models/MataKuliahSesi');
@@ -36,25 +37,28 @@ router.delete('/:id', async (req, res) => {
 
 /* ============ ENDPOINT SESI MATA KULIAH ============ */
 
-// Tambah sesi (POST) --- SEKARANG PAKAI CLOUDINARY
+// Tambah sesi (POST)
 router.post('/sesi', upload.array('pdfFile[]', 10), async (req, res) => {
-  const {
-    matkulId,
-    pelajaran,
-    ringkasan,
-    nilai
-  } = req.body;
+  const { matkulId, pelajaran, ringkasan, nilai } = req.body;
 
-  // ------ DOKUMEN dari Cloudinary -----
-  const pdfFiles = req.files.map(file => file.path); // .path = URL Cloudinary
+  const pdfFiles = req.files.map(file => file.path);
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
   let pdfJudul = [];
-  for (let i = 0; i < pdfFiles.length; i++) {
-    pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i+1}`);
+
+  // Pastikan file jadi public
+  for (const file of req.files) {
+    await cloudinary.api.update(file.filename, {
+      resource_type: 'raw',
+      type: 'upload',
+      access_mode: 'public'
+    });
   }
 
-  // ------ NOTE/LINK -----
+  for (let i = 0; i < pdfFiles.length; i++) {
+    pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i + 1}`);
+  }
+
   const videoJudulRaw = req.body['videoJudul[]'] || [];
   const videoLinkRaw = req.body['videoLink[]'] || [];
   const videoJudulArr = Array.isArray(videoJudulRaw) ? videoJudulRaw : [videoJudulRaw];
@@ -66,7 +70,7 @@ router.post('/sesi', upload.array('pdfFile[]', 10), async (req, res) => {
     ringkasan,
     ringkasanOCR: req.body.ringkasanOCR,
     nilai,
-    pdf: pdfFiles,         // SEKARANG: array of Cloudinary URL!
+    pdf: pdfFiles,
     pdfJudul,
     videoLink: videoLinkArr,
     videoJudul: videoJudulArr
@@ -99,23 +103,30 @@ router.put('/sesi/:id', upload.array('pdfFile[]', 10), async (req, res) => {
   sesi.nilai = req.body.nilai;
   sesi.ringkasanOCR = req.body.ringkasanOCR;
 
-  // Handle dokumen update (Cloudinary)
-  const pdfFiles = req.files.map(file => file.path); // .path = URL Cloudinary
+  const pdfFiles = req.files.map(file => file.path);
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
 
   if (pdfFiles.length > 0) {
     sesi.pdf = pdfFiles;
+
+    for (const file of req.files) {
+      await cloudinary.api.update(file.filename, {
+        resource_type: 'raw',
+        type: 'upload',
+        access_mode: 'public'
+      });
+    }
+
     let pdfJudul = [];
     for (let i = 0; i < pdfFiles.length; i++) {
-      pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i+1}`);
+      pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i + 1}`);
     }
     sesi.pdfJudul = pdfJudul;
   } else if (pdfJudulArr.length > 0) {
     sesi.pdfJudul = pdfJudulArr;
   }
 
-  // Note/Link
   const videoJudulRaw = req.body['videoJudul[]'] || [];
   const videoLinkRaw = req.body['videoLink[]'] || [];
   sesi.videoJudul = Array.isArray(videoJudulRaw) ? videoJudulRaw : [videoJudulRaw];
@@ -136,7 +147,6 @@ router.delete('/sesi/:id', async (req, res) => {
 });
 
 /* ============ ENDPOINT DETAIL MATA KULIAH BY ID ============ */
-// !!! PALING BAWAH !!!
 router.get('/:id', async (req, res) => {
   if (req.params.id === 'sesi') return res.status(400).json({ message: 'Invalid request' });
   try {
