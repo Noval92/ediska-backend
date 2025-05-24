@@ -48,7 +48,7 @@ router.delete('/:id', async (req, res) => {
 
 /* ============ ENDPOINT SESI MATA KULIAH ============ */
 
-// Tambah sesi
+// Tambah sesi (POST)
 router.post('/sesi', upload.fields([
   { name: 'pdfFile[]', maxCount: 10 },
   { name: 'pdfJudul[]' },
@@ -60,32 +60,37 @@ router.post('/sesi', upload.fields([
     pelajaran,
     ringkasan,
     nilai,
-    pdfJudul = [],
-    videoJudul = [],
-    videoLink = []
+    // Jangan ambil pdfJudul dll langsung dari sini, nanti diambil dari req.body di bawah
   } = req.body;
 
-  const pdfFiles = [];
-  const pdfJudulArr = Array.isArray(pdfJudul) ? pdfJudul : [pdfJudul];
-  const videoJudulArr = Array.isArray(videoJudul) ? videoJudul : [videoJudul];
-  const videoLinkArr = Array.isArray(videoLink) ? videoLink : [videoLink];
-
+  // ------ DOKUMEN -----
   const pdfFileList = req.files['pdfFile[]'] || [];
+  const pdfJudulRaw = req.body['pdfJudul[]'] || [];
+  const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
+  let pdf = [];
+  let pdfJudul = [];
   for (let i = 0; i < pdfFileList.length; i++) {
-    pdfFiles.push(pdfFileList[i].path);
+    pdf.push(pdfFileList[i].path);
+    pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i+1}`);
   }
 
-const sesi = await MataKuliahSesi.create({
-  matkulId,
-  pelajaran,
-  ringkasan,
-  ringkasanOCR: req.body.ringkasanOCR, // <--- Tambah ini!
-  nilai,
-  pdf: pdfFiles,
-  pdfJudul: pdfJudulArr,
-  videoLink: videoLinkArr,
-  videoJudul: videoJudulArr
-});
+  // ------ NOTE/LINK -----
+  const videoJudulRaw = req.body['videoJudul[]'] || [];
+  const videoLinkRaw = req.body['videoLink[]'] || [];
+  const videoJudulArr = Array.isArray(videoJudulRaw) ? videoJudulRaw : [videoJudulRaw];
+  const videoLinkArr = Array.isArray(videoLinkRaw) ? videoLinkRaw : [videoLinkRaw];
+
+  const sesi = await MataKuliahSesi.create({
+    matkulId,
+    pelajaran,
+    ringkasan,
+    ringkasanOCR: req.body.ringkasanOCR,
+    nilai,
+    pdf,
+    pdfJudul,
+    videoLink: videoLinkArr,
+    videoJudul: videoJudulArr
+  });
 
   res.json(sesi);
 });
@@ -105,7 +110,7 @@ router.get('/sesi/:id', async (req, res) => {
   res.json(sesi);
 });
 
-// Update sesi
+// Update sesi (PUT)
 router.put('/sesi/:id', upload.fields([
   { name: 'pdfFile[]', maxCount: 10 }
 ]), async (req, res) => {
@@ -115,16 +120,35 @@ router.put('/sesi/:id', upload.fields([
   sesi.pelajaran = req.body.pelajaran;
   sesi.ringkasan = req.body.ringkasan;
   sesi.nilai = req.body.nilai;
+  sesi.ringkasanOCR = req.body.ringkasanOCR;
 
-  const pdfJudul = Array.isArray(req.body.pdfJudul) ? req.body.pdfJudul : [req.body.pdfJudul].filter(Boolean);
-  const videoJudul = Array.isArray(req.body.videoJudul) ? req.body.videoJudul : [req.body.videoJudul].filter(Boolean);
-  const videoLink = Array.isArray(req.body.videoLink) ? req.body.videoLink : [req.body.videoLink].filter(Boolean);
-  const pdfFiles = (req.files['pdfFile[]'] || []).map(f => f.path);
+  // Handle dokumen update
+  const pdfFileList = req.files['pdfFile[]'] || [];
+  const pdfJudulRaw = req.body['pdfJudul[]'] || [];
+  const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
 
-  sesi.pdfJudul = pdfJudul;
-  sesi.pdf = pdfFiles.length > 0 ? pdfFiles : sesi.pdf; // kalau ada yang baru diupload
-  sesi.videoJudul = videoJudul;
-  sesi.videoLink = videoLink;
+  let pdf = sesi.pdf;
+  let pdfJudul = sesi.pdfJudul;
+  if (pdfFileList.length > 0) {
+    // Update file dan judul hanya jika upload baru
+    pdf = [];
+    pdfJudul = [];
+    for (let i = 0; i < pdfFileList.length; i++) {
+      pdf.push(pdfFileList[i].path);
+      pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i+1}`);
+    }
+    sesi.pdf = pdf;
+    sesi.pdfJudul = pdfJudul;
+  } else if (pdfJudulArr.length > 0) {
+    // Jika tidak upload file baru, update judul jika ada
+    sesi.pdfJudul = pdfJudulArr;
+  }
+
+  // Note/Link
+  const videoJudulRaw = req.body['videoJudul[]'] || [];
+  const videoLinkRaw = req.body['videoLink[]'] || [];
+  sesi.videoJudul = Array.isArray(videoJudulRaw) ? videoJudulRaw : [videoJudulRaw];
+  sesi.videoLink = Array.isArray(videoLinkRaw) ? videoLinkRaw : [videoLinkRaw];
 
   await sesi.save();
   res.send('Sesi berhasil diperbarui');
