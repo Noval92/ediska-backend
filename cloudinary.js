@@ -12,7 +12,8 @@ const storage = new CloudinaryStorage({
   params: {
     folder: 'ediska_upload',
     allowed_formats: ['pdf', 'jpg', 'jpeg', 'png', 'gif'],
-    resource_type: 'auto'
+    resource_type: 'auto',
+    access_mode: 'public' // ✅ Tambahkan baris ini
   }
 });
 
