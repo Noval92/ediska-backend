@@ -1,24 +1,12 @@
 const express = require('express');
 const router = express.Router();
+// ==== Pakai Cloudinary ==== //
+const { storage } = require('../cloudinary'); // Pastikan path benar!
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const upload = multer({ storage: storage }); // SEKARANG storage cloudinary!
 
 const MataKuliah = require('../models/MataKuliah');
 const MataKuliahSesi = require('../models/MataKuliahSesi');
-
-// === SETUP UPLOAD FILE ===
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = 'uploads/';
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'));
-  }
-});
-const upload = multer({ storage: storage });
 
 /* ============ ENDPOINT MATA KULIAH ============ */
 
@@ -48,29 +36,21 @@ router.delete('/:id', async (req, res) => {
 
 /* ============ ENDPOINT SESI MATA KULIAH ============ */
 
-// Tambah sesi (POST)
-router.post('/sesi', upload.fields([
-  { name: 'pdfFile[]', maxCount: 10 },
-  { name: 'pdfJudul[]' },
-  { name: 'videoJudul[]' },
-  { name: 'videoLink[]' }
-]), async (req, res) => {
+// Tambah sesi (POST) --- SEKARANG PAKAI CLOUDINARY
+router.post('/sesi', upload.array('pdfFile[]', 10), async (req, res) => {
   const {
     matkulId,
     pelajaran,
     ringkasan,
-    nilai,
-    // Jangan ambil pdfJudul dll langsung dari sini, nanti diambil dari req.body di bawah
+    nilai
   } = req.body;
 
-  // ------ DOKUMEN -----
-  const pdfFileList = req.files['pdfFile[]'] || [];
+  // ------ DOKUMEN dari Cloudinary -----
+  const pdfFiles = req.files.map(file => file.path); // .path = URL Cloudinary
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
-  let pdf = [];
   let pdfJudul = [];
-  for (let i = 0; i < pdfFileList.length; i++) {
-    pdf.push(pdfFileList[i].path);
+  for (let i = 0; i < pdfFiles.length; i++) {
     pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i+1}`);
   }
 
@@ -86,7 +66,7 @@ router.post('/sesi', upload.fields([
     ringkasan,
     ringkasanOCR: req.body.ringkasanOCR,
     nilai,
-    pdf,
+    pdf: pdfFiles,         // SEKARANG: array of Cloudinary URL!
     pdfJudul,
     videoLink: videoLinkArr,
     videoJudul: videoJudulArr
@@ -97,7 +77,6 @@ router.post('/sesi', upload.fields([
 
 // Ambil semua sesi dari satu matkul
 router.get('/:matkulId/sesi', async (req, res) => {
-  // Pastikan bukan /sesi/:id
   if (req.params.matkulId === 'sesi') return res.status(400).json({ message: 'Invalid request' });
   const list = await MataKuliahSesi.find({ matkulId: req.params.matkulId });
   res.json(list);
@@ -111,9 +90,7 @@ router.get('/sesi/:id', async (req, res) => {
 });
 
 // Update sesi (PUT)
-router.put('/sesi/:id', upload.fields([
-  { name: 'pdfFile[]', maxCount: 10 }
-]), async (req, res) => {
+router.put('/sesi/:id', upload.array('pdfFile[]', 10), async (req, res) => {
   const sesi = await MataKuliahSesi.findById(req.params.id);
   if (!sesi) return res.status(404).send('Sesi tidak ditemukan');
 
@@ -122,25 +99,19 @@ router.put('/sesi/:id', upload.fields([
   sesi.nilai = req.body.nilai;
   sesi.ringkasanOCR = req.body.ringkasanOCR;
 
-  // Handle dokumen update
-  const pdfFileList = req.files['pdfFile[]'] || [];
+  // Handle dokumen update (Cloudinary)
+  const pdfFiles = req.files.map(file => file.path); // .path = URL Cloudinary
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
 
-  let pdf = sesi.pdf;
-  let pdfJudul = sesi.pdfJudul;
-  if (pdfFileList.length > 0) {
-    // Update file dan judul hanya jika upload baru
-    pdf = [];
-    pdfJudul = [];
-    for (let i = 0; i < pdfFileList.length; i++) {
-      pdf.push(pdfFileList[i].path);
+  if (pdfFiles.length > 0) {
+    sesi.pdf = pdfFiles;
+    let pdfJudul = [];
+    for (let i = 0; i < pdfFiles.length; i++) {
       pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i+1}`);
     }
-    sesi.pdf = pdf;
     sesi.pdfJudul = pdfJudul;
   } else if (pdfJudulArr.length > 0) {
-    // Jika tidak upload file baru, update judul jika ada
     sesi.pdfJudul = pdfJudulArr;
   }
 
@@ -167,7 +138,6 @@ router.delete('/sesi/:id', async (req, res) => {
 /* ============ ENDPOINT DETAIL MATA KULIAH BY ID ============ */
 // !!! PALING BAWAH !!!
 router.get('/:id', async (req, res) => {
-  // Agar tidak bentrok dengan /:matkulId/sesi atau /sesi/:id
   if (req.params.id === 'sesi') return res.status(400).json({ message: 'Invalid request' });
   try {
     const mk = await MataKuliah.findById(req.params.id);
