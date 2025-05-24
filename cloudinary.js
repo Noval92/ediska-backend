@@ -11,9 +11,9 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'ediska_upload',
-    allowed_formats: ['pdf', 'jpg', 'jpeg', 'png', 'gif'],
-    resource_type: 'auto',
-    access_mode: 'public' // ✅ Tambahkan baris ini
+    allowed_formats: ['pdf'],
+    resource_type: 'raw',      // ✅ WAJIB: ini membuat upload jadi "raw", bukan "image"
+    access_mode: 'public'      // ✅ WAJIB: agar file bisa dibuka publik
   }
 });
 
