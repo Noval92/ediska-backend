@@ -1,15 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
-
-const MataKuliah = require('../models/MataKuliah');
-const MataKuliahSesi = require('../models/MataKuliahSesi');
-
-// Pastikan folder uploads ada
+const fs = require('fs');
+// Bikin folder uploads kalau belum ada
 if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
-
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     cb(null, 'uploads/');
