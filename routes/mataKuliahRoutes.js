@@ -104,21 +104,30 @@ router.put('/sesi/:id', upload.array('pdfFile[]', 10), async (req, res) => {
   sesi.nilai = req.body.nilai;
   sesi.ringkasanOCR = req.body.ringkasanOCR;
 
+  // ====== LOGIKA PDF BARU DAN LAMA ======
+
+  // Ambil dokumen lama yang masih dipilih user (pdfOld dan pdfJudulOld)
+  let pdfOld = req.body['pdfOld[]'] || [];
+  let pdfJudulOld = req.body['pdfJudulOld[]'] || [];
+  // Biar konsisten array
+  if (!Array.isArray(pdfOld)) pdfOld = pdfOld ? [pdfOld] : [];
+  if (!Array.isArray(pdfJudulOld)) pdfJudulOld = pdfJudulOld ? [pdfJudulOld] : [];
+
+  // Ambil file baru dari upload
   const pdfFiles = req.files.map(file => '/uploads/' + file.filename);
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
 
-  if (pdfFiles.length > 0) {
-    sesi.pdf = pdfFiles;
-    let pdfJudul = [];
-    for (let i = 0; i < pdfFiles.length; i++) {
-      pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i + 1}`);
-    }
-    sesi.pdfJudul = pdfJudul;
-  } else if (pdfJudulArr.length > 0) {
-    sesi.pdfJudul = pdfJudulArr;
-  }
+  // Gabungkan: PDF lama yang masih dipilih + PDF baru
+  const newPDF = [...pdfOld, ...pdfFiles];
+  const newJudul = [...pdfJudulOld, ...pdfJudulArr];
 
+  sesi.pdf = newPDF;
+  sesi.pdfJudul = newJudul;
+
+  // ====== END PDF ======
+
+  // Video link/judul logic biarkan sama
   const videoJudulRaw = req.body['videoJudul[]'] || [];
   const videoLinkRaw = req.body['videoLink[]'] || [];
   sesi.videoJudul = Array.isArray(videoJudulRaw) ? videoJudulRaw : [videoJudulRaw];
@@ -127,6 +136,7 @@ router.put('/sesi/:id', upload.array('pdfFile[]', 10), async (req, res) => {
   await sesi.save();
   res.send('Sesi berhasil diperbarui');
 });
+
 
 // Hapus sesi berdasarkan ID
 router.delete('/sesi/:id', async (req, res) => {
