@@ -14,7 +14,12 @@ const storage = new CloudinaryStorage({
     allowed_formats: ['pdf'],
     resource_type: 'raw',      // ✅ WAJIB: ini membuat upload jadi "raw", bukan "image"
     access_mode: 'public'      // ✅ WAJIB: agar file bisa dibuka publik
+    use_filename: true,       // <-- tambah ini
+    unique_filename: true     // <-- tambah ini
+
   }
 });
 
 module.exports = { cloudinary, storage };
+
+
