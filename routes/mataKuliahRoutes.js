@@ -1,13 +1,24 @@
 const express = require('express');
 const router = express.Router();
-
-// ==== Pakai Cloudinary ==== //
-const { storage, cloudinary } = require('../cloudinary'); // Tambahkan cloudinary
+const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
-const upload = multer({ storage: storage });
 
 const MataKuliah = require('../models/MataKuliah');
 const MataKuliahSesi = require('../models/MataKuliahSesi');
+
+// Pastikan folder uploads ada
+if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function(req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
 
 /* ============ ENDPOINT MATA KULIAH ============ */
 
@@ -41,19 +52,10 @@ router.delete('/:id', async (req, res) => {
 router.post('/sesi', upload.array('pdfFile[]', 10), async (req, res) => {
   const { matkulId, pelajaran, ringkasan, nilai } = req.body;
 
-  const pdfFiles = req.files.map(file => file.path);
+  const pdfFiles = req.files.map(file => '/uploads/' + file.filename);
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
   let pdfJudul = [];
-
-  // Pastikan file jadi public
-  for (const file of req.files) {
-    await cloudinary.api.update(file.filename, {
-      resource_type: 'raw',
-      type: 'upload',
-      access_mode: 'public'
-    });
-  }
 
   for (let i = 0; i < pdfFiles.length; i++) {
     pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i + 1}`);
@@ -103,21 +105,12 @@ router.put('/sesi/:id', upload.array('pdfFile[]', 10), async (req, res) => {
   sesi.nilai = req.body.nilai;
   sesi.ringkasanOCR = req.body.ringkasanOCR;
 
-  const pdfFiles = req.files.map(file => file.path);
+  const pdfFiles = req.files.map(file => '/uploads/' + file.filename);
   const pdfJudulRaw = req.body['pdfJudul[]'] || [];
   const pdfJudulArr = Array.isArray(pdfJudulRaw) ? pdfJudulRaw : [pdfJudulRaw];
 
   if (pdfFiles.length > 0) {
     sesi.pdf = pdfFiles;
-
-    for (const file of req.files) {
-      await cloudinary.api.update(file.filename, {
-        resource_type: 'raw',
-        type: 'upload',
-        access_mode: 'public'
-      });
-    }
-
     let pdfJudul = [];
     for (let i = 0; i < pdfFiles.length; i++) {
       pdfJudul.push(pdfJudulArr[i] ? pdfJudulArr[i] : `Dokumen ${i + 1}`);
